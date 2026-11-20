@@ -1,0 +1,15 @@
+{
+  "name": "lista-compra-nuxt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
+    "nuxt": "^4.6.4"
+  }
+}

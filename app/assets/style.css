@@ -1,0 +1,48 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #26362d;
+  background: #f4f6f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: clamp(2rem, 6vw, 5rem) 1rem;
+}
+
+main {
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 0 0 2rem;
+  text-align: center;
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  letter-spacing: -0.04em;
+}
+
+
+:focus-visible {
+  outline: 3px solid #79b894;
+  outline-offset: 3px;
+}
+
+
+
+@media (max-width: 480px) {
+  .campos {
+    flex-direction: column;
+  }
+
+  .campos button {
+    width: 100%;
+  }
+
+  #lista .producto {
+    font-size: 1.2rem;
+  }
+}

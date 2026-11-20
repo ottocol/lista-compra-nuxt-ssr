@@ -1,23 +1,18 @@
-import { createClient } from '@supabase/supabase-js'
-import { useRuntimeConfig } from '#imports'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 
-//El mismo cliente que en la versión Vite, con la sesión en localStorage.
-//En el navegador funciona igual que antes. En el servidor de Nuxt no hay
-//localStorage: este cliente nunca tiene sesión, así que para Supabase cada
-//petición que hace el servidor es de un usuario anónimo.
-//OJO: en SSR, un módulo como este se carga UNA vez en el servidor y lo
-//comparten todas las peticiones de todos los usuarios
-let cliente = null
+//Ahora el cliente lo crea el módulo @nuxtjs/supabase. En el navegador guarda la
+//sesión en cookies (no en localStorage), que viajan con cada petición al servidor.
+//En el servidor crea un cliente para cada petición que lee esas cookies: así el
+//servidor sabe quién es el usuario y Supabase le devuelve SU lista.
+//Ojo: en el servidor solo se puede pedir el cliente antes del primer await de
+//cada función, por eso cada función lo guarda en una constante al empezar
 function supabase() {
-  if (!cliente) {
-    const config = useRuntimeConfig()
-    cliente = createClient(config.public.supabaseUrl, config.public.supabaseKey)
-  }
-  return cliente
+  return useSupabaseClient()
 }
 
 async function login(email, password) {
-  const { data, error } = await supabase().auth.signInWithPassword({
+  const cliente = supabase()
+  const { data, error } = await cliente.auth.signInWithPassword({
     email,
     password
   })
@@ -28,21 +23,24 @@ async function login(email, password) {
 
 
 async function logout() {
-  const { error } = await supabase().auth.signOut({ scope: 'local' })
+  const cliente = supabase()
+  const { error } = await cliente.auth.signOut({ scope: 'local' })
   if (error) throw new Error('Error al cerrar sesión: ' + error.message)
 }
 
 //Devuelve la sesión actual o null si no hay usuario autenticado
 async function getSesion() {
-  const { data: { session }, error } = await supabase().auth.getSession()
+  const cliente = supabase()
+  const { data: { session }, error } = await cliente.auth.getSession()
   if (error) throw error
   return session
 }
 
 async function obtenerProductos() {
+  const cliente = supabase()
   if (!await getSesion()) return []
 
-  const { data, error } = await supabase()
+  const { data, error } = await cliente
     .from('lista')
     .select('id, nombre, comprado, usuario')
     .order('id')
@@ -53,10 +51,11 @@ async function obtenerProductos() {
 
 //Crea un producto y devuelve el objeto creado (con su id asignado por la BD)
 async function crearProducto(nombre) {
+  const cliente = supabase()
   const session = await getSesion()
   if (!session) return
 
-  const { data, error } = await supabase()
+  const { data, error } = await cliente
     .from('lista')
     .insert({ nombre, comprado: false, usuario: session.user.id })
     .select('id, nombre, comprado, usuario')
@@ -67,9 +66,10 @@ async function crearProducto(nombre) {
 }
 
 async function borrarProducto(id) {
+  const cliente = supabase()
   if (!await getSesion()) return
 
-  const { error } = await supabase()
+  const { error } = await cliente
     .from('lista')
     .delete()
     .eq('id', id)
@@ -78,9 +78,10 @@ async function borrarProducto(id) {
 }
 
 async function setComprado(id, valor) {
+  const cliente = supabase()
   if (!await getSesion()) return
 
-  const { error } = await supabase()
+  const { error } = await cliente
     .from('lista')
     .update({ comprado: valor })
     .eq('id', id)
@@ -89,9 +90,10 @@ async function setComprado(id, valor) {
 }
 
 async function setNombre(id, nombre) {
+  const cliente = supabase()
   if (!await getSesion()) return
 
-  const { error } = await supabase()
+  const { error } = await cliente
     .from('lista')
     .update({ nombre })
     .eq('id', id)
@@ -100,12 +102,13 @@ async function setNombre(id, nombre) {
 }
 
 async function getUsuario() {
-  //esto es más rápido que getUser aunque podría ser que no estuviéramos autenticados correctamente en el servidor
-  let result = await supabase().auth.getSession()
-  if (result.data.session)
-    return result.data.session.user
-  else
-    return null
+  const cliente = supabase()
+  //el módulo ya ha comprobado el usuario al empezar (en el servidor, con la cookie)
+  const usuario = useSupabaseUser()
+  if (usuario.value) return usuario.value
+  //si aún no lo sabe (por ejemplo, justo después de hacer login), lo comprobamos
+  const { data } = await cliente.auth.getClaims()
+  return data?.claims ?? null    //{ sub, email, ... }
 }
 
 export { login, logout, obtenerProductos, crearProducto, borrarProducto,
